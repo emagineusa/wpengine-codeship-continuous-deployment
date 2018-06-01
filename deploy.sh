@@ -93,7 +93,7 @@ if [ ! -d "./wp-content/themes" ]; then
     mkdir ./wp-content/themes
 fi
 
-rsync -a ../clone/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+rsync -a ../clone/build/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
 
 # Stage, commit, and push to wpengine repo
 
