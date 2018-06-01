@@ -29,28 +29,33 @@ fi
 # this directory is the default your git project is checked out into by Codeship.
 cd ~/clone
 
-# Get official list of files/folders that are not meant to be on production if $EXCLUDE_LIST is not set.
-if [[ -z "${EXCLUDE_LIST}" ]];
+if [[ -z "${INCLUDE_ONLY}" ]];
 then
-    wget https://raw.githubusercontent.com/linchpin/wpengine-codeship-continuous-deployment/master/exclude-list.txt
+	# Get official list of files/folders that are not meant to be on production if $EXCLUDE_LIST is not set.
+	if [[ -z "${EXCLUDE_LIST}" ]];
+	then
+		wget https://raw.githubusercontent.com/linchpin/wpengine-codeship-continuous-deployment/master/exclude-list.txt
+	else
+		# @todo validate proper url?
+		wget ${EXCLUDE_LIST}
+	fi
+
+	# Loop over list of files/folders and remove them from deployment
+	ITEMS=`cat exclude-list.txt`
+	for ITEM in $ITEMS; do
+		if [[ $ITEM == *.* ]]
+		then
+			find . -depth -name "$ITEM" -type f -exec rm "{}" \;
+		else
+			find . -depth -name "$ITEM" -type d -exec rm -rf "{}" \;
+		fi
+	done
+
+	# Remove exclude-list file
+	rm exclude-list.txt
 else
-    # @todo validate proper url?
-    wget ${EXCLUDE_LIST}
+	# No need to do anything we are only including one directory to be referenced later
 fi
-
-# Loop over list of files/folders and remove them from deployment
-ITEMS=`cat exclude-list.txt`
-for ITEM in $ITEMS; do
-    if [[ $ITEM == *.* ]]
-    then
-        find . -depth -name "$ITEM" -type f -exec rm "{}" \;
-    else
-        find . -depth -name "$ITEM" -type d -exec rm -rf "{}" \;
-    fi
-done
-
-# Remove exclude-list file
-rm exclude-list.txt
 
 # Clone the WPEngine files to the deployment directory
 # if we are not force pushing our changes
@@ -93,7 +98,12 @@ if [ ! -d "./wp-content/themes" ]; then
     mkdir ./wp-content/themes
 fi
 
-rsync -a ../clone/build/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+if [[ -z "${INCLUDE_ONLY}" ]];
+then
+	rsync -a ../clone/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+else
+	rsync -a ../clone/${INCLUDE_ONLY}/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+fi
 
 # Stage, commit, and push to wpengine repo
 
