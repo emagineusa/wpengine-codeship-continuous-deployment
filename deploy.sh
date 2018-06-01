@@ -53,8 +53,6 @@ then
 
 	# Remove exclude-list file
 	rm exclude-list.txt
-else
-	# No need to do anything we are only including one directory to be referenced later
 fi
 
 # Clone the WPEngine files to the deployment directory
