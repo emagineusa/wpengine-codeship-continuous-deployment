@@ -98,10 +98,12 @@ fi
 
 if [[ -z "${INCLUDE_ONLY}" ]];
 then
-	rsync -a ../clone/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+	clone_directory="../clone/"
 else
-	rsync -a ../clone/${INCLUDE_ONLY}/* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+	clone_directory="../clone/${INCLUDE_ONLY}/"
 fi
+
+rsync -a ${clone_directory}* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
 
 # Stage, commit, and push to wpengine repo
 
