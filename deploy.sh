@@ -3,26 +3,24 @@
 set -e
 
 # Check for required environment variables and make sure they are setup
-: ${PROJECT_TYPE?"PROJECT_TYPE Missing"} # theme|plugin
-: ${WPE_INSTALL?"WPE_INSTALL Missing"}   # subdomain for wpengine install 
-: ${REPO_NAME?"REPO_NAME Missing"}       # repo name (Typically the folder name of the project)
+: ${PROJECT_TYPE?"PROJECT_TYPE Missing"}   # theme|plugin
+: ${WPE_ENV_PROD?"WPE_ENV_PROD Missing"}   # subdomain for wpengine install 
+: ${WPE_ENV_STAGE?"WPE_ENV_STAGE Missing"} # subdomain for wpengine install 
+: ${WPE_ENV_DEV?"WPE_ENV_DEV Missing"}     # subdomain for wpengine install 
+: ${REPO_NAME?"REPO_NAME Missing"}         # repo name (Typically the folder name of the project)
 
-# Set repo based on current branch, by default master=production, develop=staging
-# @todo support custom branches
-
-target_wpe_install=${WPE_INSTALL}
-
+# Change the target install based on the branch being pushed.
+# master  -> production
+# stage   -> staging
+# develop -> dev
 if [ "$CI_BRANCH" == "master" ]
 then
-    repo=production
-else
-    repo=staging
-fi
-
-if [[ "$CI_BRANCH" == "qa" && -n "$WPE_QA_INSTALL" ]]
+    target_wpe_install=${WPE_ENV_PROD}
+elif [ "$CI_BRANCH" == "stage" ]
 then
-    target_wpe_install=${WPE_QA_INSTALL}
-    repo=production
+	target_wpe_install=${WPE_ENV_STAGE}
+else
+    target_wpe_install=${WPE_ENV_DEV}
 fi
 
 # Begin from the ~/clone directory
@@ -60,7 +58,7 @@ fi
 if [[ $CI_MESSAGE != *#force* ]]
 then
     force=''
-    git clone git@git.wpengine.com:${repo}/${target_wpe_install}.git ~/deployment
+    git clone git@git.wpengine.com:production/${target_wpe_install}.git ~/deployment
 else
     force='-f'
     if [ ! -d "~/deployment" ]; then
@@ -72,7 +70,7 @@ fi
 
 # If there was a problem cloning, exit
 if [ "$?" != "0" ] ; then
-    echo "Unable to clone ${repo}"
+    echo "Unable to clone production in ${target_wpe_install}"
     kill -SIGINT $$
 fi
 
@@ -109,12 +107,12 @@ rsync -a ${clone_directory}* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
 
 echo "Add remote"
 
-git remote add ${repo} git@git.wpengine.com:${repo}/${target_wpe_install}.git
+git remote add production git@git.wpengine.com:production/${target_wpe_install}.git
 
 git config --global user.email CI_COMMITTER_EMAIL
 git config --global user.name CI_COMMITTER_NAME
 git config core.ignorecase false
 git add --all
-git commit -am "Deployment to ${target_wpe_install} $repo by $CI_COMMITTER_NAME from $CI_NAME"
+git commit -am "Deployment to ${target_wpe_install} production by $CI_COMMITTER_NAME from $CI_NAME"
 
-git push ${force} ${repo} master
+git push ${force} production master
