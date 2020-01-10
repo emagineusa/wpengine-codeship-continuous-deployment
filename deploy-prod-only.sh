@@ -10,7 +10,7 @@ set -e
 : ${WPE_ENV_PROD?"WPE_ENV_PROD Missing"}   # subdomain for wpengine install
 : ${REPO_NAME?"REPO_NAME Missing"}         # repo name (Typically the folder name of the project)
 
-target_wpe_install=${WPE_ENV_PROD}
+target_wpe_installs=${WPE_ENV_PROD}
 
 # Begin from the ~/clone directory
 # this directory is the default your git project is checked out into by Codeship.
@@ -42,66 +42,73 @@ then
 	rm exclude-list.txt
 fi
 
-# Clone the WPEngine files to the deployment directory
-# if we are not force pushing our changes
-if [[ $CI_MESSAGE != *#force* ]]
-then
-    force=''
-    git clone git@git.wpengine.com:production/${target_wpe_install}.git ~/deployment
-else
-    force='-f'
-    if [ ! -d "~/deployment" ]; then
-        mkdir ~/deployment
-        cd ~/deployment
-        git init
-    fi
-fi
+# Turn target instals into an array
+twis=$(echo $target_wpe_installs | tr "," "\n")
 
-# If there was a problem cloning, exit
-if [ "$?" != "0" ] ; then
-    echo "Unable to clone production in ${target_wpe_install}"
-    kill -SIGINT $$
-fi
+for target_wpe_install in $twis
+do
+    # Clone the WPEngine files to the deployment directory
+	# if we are not force pushing our changes
+	if [[ $CI_MESSAGE != *#force* ]]
+	then
+		force=''
+		git clone git@git.wpengine.com:production/${target_wpe_install}.git ~/deployment
+	else
+		force='-f'
+		if [ ! -d "~/deployment" ]; then
+			mkdir ~/deployment
+			cd ~/deployment
+			git init
+		fi
+	fi
 
-# Move the gitignore file to the deployments folder
-cd ~/deployment
-wget --output-document=.gitignore https://raw.githubusercontent.com/linchpin/wpengine-codeship-continuous-deployment/master/gitignore-template.txt
+	# If there was a problem cloning, exit
+	if [ "$?" != "0" ] ; then
+		echo "Unable to clone production in ${target_wpe_install}"
+		kill -SIGINT $$
+	fi
 
-# Delete plugin/theme if it exists, and move cleaned version into deployment folder
-rm -rf /wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+	# Move the gitignore file to the deployments folder
+	cd ~/deployment
+	wget --output-document=.gitignore https://raw.githubusercontent.com/linchpin/wpengine-codeship-continuous-deployment/master/gitignore-template.txt
 
-# Check to see if the wp-content directory exists, if not create it
-if [ ! -d "./wp-content" ]; then
-    mkdir ./wp-content
-fi
-# Check to see if the plugins directory exists, if not create it
-if [ ! -d "./wp-content/plugins" ]; then
-    mkdir ./wp-content/plugins
-fi
-# Check to see if the themes directory exists, if not create it
-if [ ! -d "./wp-content/themes" ]; then
-    mkdir ./wp-content/themes
-fi
+	# Delete plugin/theme if it exists, and move cleaned version into deployment folder
+	rm -rf /wp-content/${PROJECT_TYPE}s/${REPO_NAME}
 
-if [[ -z "${INCLUDE_ONLY}" ]];
-then
-	clone_directory="../clone/"
-else
-	clone_directory="../clone/${INCLUDE_ONLY}/"
-fi
+	# Check to see if the wp-content directory exists, if not create it
+	if [ ! -d "./wp-content" ]; then
+		mkdir ./wp-content
+	fi
+	# Check to see if the plugins directory exists, if not create it
+	if [ ! -d "./wp-content/plugins" ]; then
+		mkdir ./wp-content/plugins
+	fi
+	# Check to see if the themes directory exists, if not create it
+	if [ ! -d "./wp-content/themes" ]; then
+		mkdir ./wp-content/themes
+	fi
 
-rsync -a ${clone_directory}* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
+	if [[ -z "${INCLUDE_ONLY}" ]];
+	then
+		clone_directory="../clone/"
+	else
+		clone_directory="../clone/${INCLUDE_ONLY}/"
+	fi
 
-# Stage, commit, and push to wpengine repo
+	rsync -a ${clone_directory}* ./wp-content/${PROJECT_TYPE}s/${REPO_NAME}
 
-echo "Add remote"
+	# Stage, commit, and push to wpengine repo
 
-git remote add production git@git.wpengine.com:production/${target_wpe_install}.git
+	echo "Add remote"
 
-git config --global user.email CI_COMMITTER_EMAIL
-git config --global user.name CI_COMMITTER_NAME
-git config core.ignorecase false
-git add --all
-git commit -am "Deployment to ${target_wpe_install} production by $CI_COMMITTER_NAME from $CI_NAME"
+	git remote add production git@git.wpengine.com:production/${target_wpe_install}.git
 
-git push ${force} production master
+	git config --global user.email CI_COMMITTER_EMAIL
+	git config --global user.name CI_COMMITTER_NAME
+	git config core.ignorecase false
+	git add --all
+	git commit -am "Deployment to ${target_wpe_install} production by $CI_COMMITTER_NAME from $CI_NAME"
+
+	git push ${force} production master
+done
+
