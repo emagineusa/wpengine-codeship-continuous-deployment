@@ -13,10 +13,10 @@ set -e
 # master  -> production
 # stage   -> staging
 # develop -> dev
-if [ "$CI_BRANCH" == "master" ]
+if [ "$CI_BRANCH" == "master" ] || [ "$CI_BRANCH" == "main" ]
 then
     target_wpe_install=${WPE_ENV_PROD}
-elif [ "$CI_BRANCH" == "stage" ]
+elif [ "$CI_BRANCH" == "stage" ] || [ "$CI_BRANCH" == "staging" ]
 then
 	target_wpe_install=${WPE_ENV_STAGE}
 else
